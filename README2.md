@@ -1,3 +1,0 @@
-# How Retail Traders are Pushing Volatility Higher: Profiting from the NVDA Volatility Surge with VolScore
-
-In recent times, retail options trading has surged, and according to a Barclays report, the influx of retail traders has significantly affected market volatility, particularly in large-cap tech stocks. Retail traders have increasingly influenced implied volatility levels, creating opportunities for advanced strategies like short volatility trades. One way to take advantage of this is through a VolScore-based strategy, which measures the difference between a stock's implied volatility and its sector's realized volatility.
