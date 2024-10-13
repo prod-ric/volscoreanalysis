@@ -1,18 +1,4 @@
 
----
-output:
-  html_document: 
-    keep_md: true
-  pdf_document: default
-  output: md_document
-  
-author: "Riccardo Pansini"
-date: "2024-10-13"
-title: "How Retail Traders are Pushing Volatility Higher: Profiting from the NVDA Volatility Surge with VolScore"
----
-
----
-
 # Introduction
 
 In this analysis, we explore a volatility-based trading strategy on NVIDIA (NVDA) options using a metric called **VolScore**. The VolScore measures how much higher (or lower) a stock's implied volatility is compared to the realized volatility of its sector. The sector consists of stocks like Microsoft (MSFT), Apple (AAPL), and AMD.
