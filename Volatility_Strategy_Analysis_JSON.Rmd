@@ -1,0 +1,231 @@
+
+---
+output:
+  html_document: default
+  pdf_document: default
+  output: md_document
+  
+author: "Riccardo Pansini"
+date: "`r Sys.Date()`"
+title: "How Retail Traders are Pushing Volatility Higher: Profiting from the NVDA Volatility Surge with VolScore"
+---
+
+---
+
+# Introduction
+
+In this analysis, we explore a volatility-based trading strategy on NVIDIA (NVDA) options using a metric called **VolScore**. The VolScore measures how much higher (or lower) a stock's implied volatility is compared to the realized volatility of its sector. The sector consists of stocks like Microsoft (MSFT), Apple (AAPL), and AMD.
+
+We will:
+1. Gather implied volatilities and realized volatilities for the selected stocks.
+2. Calculate the sector's realized volatility.
+3. Compare NVDA's implied volatility to the sector's realized volatility to generate a VolScore.
+4. Develop a trading strategy based on VolScore thresholds.
+5. Backtest the strategy and plot the results.
+
+# Step 1: Gathering Implied and Realized Volatilities
+
+We have collected implied volatilities and realized volatilities for MSFT, AAPL, and AMD. The data is stored in JSON format.
+
+```{r}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
+# Load libraries
+library(jsonlite)
+library(ggplot2)
+
+# Simulated time-series data for implied and realized volatilities from JSON files
+msft_data <- fromJSON("MSFT.json")
+aapl_data <- fromJSON("AAPL.json")
+amd_data <- fromJSON("AMD.json")
+
+# Convert to data frames
+msft_df <- as.data.frame(msft_data$data)
+aapl_df <- as.data.frame(aapl_data$data)
+amd_df <- as.data.frame(amd_data$data)
+```
+
+# Step 2: Calculating Sector Realized Volatility
+
+We calculate the **sector realized volatility** by averaging the realized volatilities of MSFT, AAPL, and AMD.
+
+```{r}
+# Calculate sector-wide realized volatility
+# Convert realized volatility columns to numeric (if not already)
+
+msft_df = na.omit(msft_df)
+aapl_df = na.omit(aapl_df)
+amd_df = na.omit(amd_df)
+
+
+msft_df$realized_volatility <- as.numeric(msft_df$realized_volatility)
+aapl_df$realized_volatility <- as.numeric(aapl_df$realized_volatility)
+amd_df$realized_volatility <- as.numeric(amd_df$realized_volatility)
+
+msft_df$implied_volatility <- as.numeric(msft_df$implied_volatility)
+aapl_df$implied_volatility <- as.numeric(aapl_df$implied_volatility)
+amd_df$implied_volatility <- as.numeric(amd_df$implied_volatility)
+
+msft_df$price <- as.numeric(msft_df$price)
+aapl_df$price <- as.numeric(aapl_df$price)
+amd_df$price <- as.numeric(amd_df$price)
+
+
+msft_df$date <- as.Date(msft_df$date)
+aapl_df$date <- as.Date(aapl_df$date)
+amd_df$date <- as.Date(amd_df$date)
+
+
+summary(msft_df)
+
+# Calculate sector-wide realized volatility
+
+sector_realized_vol <- rowMeans(cbind(msft_df$realized_volatility, aapl_df$realized_volatility, amd_df$realized_volatility), na.rm = TRUE)
+
+
+sector_realized_vol = na.omit(sector_realized_vol)
+summary(sector_realized_vol)
+
+
+
+
+
+# Plot the sector realized volatility
+plot(msft_df$date, sector_realized_vol, type = "l", col = "blue", main = "Sector Realized Volatility", xlab = "Date", ylab = "Realized Volatility")
+```
+
+# Step 3: Calculating VolScore for NVDA
+
+Now, we calculate the **VolScore** for NVDA, which is the difference between NVDA's implied volatility and the sector's realized volatility, normalized by the sector realized volatility.
+
+```{r}
+# Simulated NVDA data
+nvda_data <- fromJSON("NVDA.json")
+nvda_df <- as.data.frame(nvda_data$data)
+nvda_df = na.omit(nvda_df)
+# Convert 'implied_volatility' in nvda_df to numeric
+nvda_df$implied_volatility <- as.numeric(nvda_df$implied_volatility)
+nvda_df$date = as.Date(nvda_df$date)
+
+
+# Calculate VolScore
+nvda_df$VolScore <- (nvda_df$implied_volatility - sector_realized_vol) / sector_realized_vol
+nvda_df$VolScore
+
+class(nvda_df$VolScore)
+
+ggplot(nvda_df) +
+  aes(x = date) +
+  geom_line(aes(y = VolScore, colour = "Nvda VolScore"), size = 1) +  # Line for Nvda VolScore
+  geom_line(aes(y = sector_realized_vol, colour = "Sector Realized"), size = 1) +  # Line for Sector VolScore
+  labs(x = "Date", y = "Volscore", title = "Nvda vs Sector Realized") +
+  scale_color_manual(values = c("Nvda VolScore" = "#9941AC", "Sector Realized" = "#1C84C6")) +  # Define colors
+  theme_minimal()
+
+
+
+# Plot NVDA VolScore
+plot(nvda_df$date, nvda_df$VolScore, type = "l", col = "red", main = "NVDA VolScore", xlab = "Date", ylab = "VolScore")
+```
+
+# Step 4: Developing a Trading Strategy
+
+The trading strategy involves:
+1. Entering a short volatility (straddle) position when the VolScore exceeds a certain threshold (1.2).
+2. Exiting the position when the VolScore falls below a specified threshold (0.7) or after a fixed holding period.
+
+```{r}
+# Initialize position tracking
+# Trading parameters
+entry_threshold <- 1.2
+exit_threshold <- 0.7
+holding_period <- 30  # in days
+
+# Initialize position tracking
+positions <- list()
+cash <- 100000  # Starting cash
+position_size <- 10000  # Trade size
+
+entry_price <- 0
+entry_date <- NA
+pnl <- 0  # To track profit/loss
+
+# Loop through NVDA data to simulate trades
+for (i in 1:nrow(nvda_df)) {
+  # Entry condition
+  if (nvda_df$VolScore[i] > entry_threshold && is.na(entry_date)) {
+    entry_date <- nvda_df$date[i]
+    entry_price <- nvda_df$implied_volatility[i]
+    positions[[length(positions) + 1]] <- list(
+      type = "Entry", 
+      date = entry_date, 
+      price = entry_price, 
+      VolScore = nvda_df$VolScore[i],
+      pnl = NA  # No P/L for entry
+    )
+  }
+  
+  # Exit condition
+  if (nvda_df$VolScore[i] < exit_threshold && !is.na(entry_date)) {
+    exit_date <- nvda_df$date[i]
+    exit_price <- nvda_df$implied_volatility[i]
+    pnl <- position_size * (entry_price - exit_price)  # Calculate P/L
+    cash <- cash + pnl
+    positions[[length(positions) + 1]] <- list(
+      type = "Exit", 
+      date = exit_date, 
+      price = exit_price, 
+      VolScore = nvda_df$VolScore[i],
+      pnl = pnl  # Include P/L for exit
+    )
+    
+    # Reset entry after exit
+    entry_date <- NA
+    entry_price <- 0
+  }
+}
+
+```
+
+# Step 5: Plotting the Final Results
+
+We now plot the **entries** and **exits** on the same chart with **VolScore** and **implied volatility** to visualize the strategy.
+
+```{r}
+# Ensure the relevant columns are numeric
+nvda_df$VolScore <- as.numeric(nvda_df$VolScore)
+nvda_df$realized_volatility <- as.numeric(nvda_df$realized_volatility)
+
+positions_df <- do.call(rbind, lapply(positions, function(x) as.data.frame(x, stringsAsFactors = FALSE)))
+
+
+# Ensure the positions dataframe also has numeric VolScore
+positions_df$VolScore <- as.numeric(positions_df$VolScore)
+
+
+
+
+# Plotting VolScore with realized volatility, sector volatility, and vertical lines for entry/exit points
+ggplot(nvda_df) +
+  aes(x = date) +
+  geom_line(aes(y = VolScore, colour = "VolScore"), size = 0.5) +  # Line for VolScore
+#  geom_line(aes(y = realized_volatility, colour = "Realized Volatility"), size = 0.5) +  # Line for Realized Volatility
+  geom_line(aes(y = sector_realized_vol, colour = "Sector Volatility"), size = 0.5) +  # Line for Sector Volatility
+  geom_line(aes(y = implied_volatility, colour = "IV"), size = 0.5) + 
+  # Add vertical lines for Entry points
+  geom_vline(data = subset(positions_df, type == "Entry"), aes(xintercept = as.numeric(date)), 
+              color = "green", size = 1, linetype = "dotted") +
+    # Add vertical lines for Exit points
+  geom_vline(data = subset(positions_df, type == "Exit"), aes(xintercept = as.numeric(date)), 
+             color = "red", size = 1, linetype = "dotted") +
+  
+  labs(x = "Date", y = "Volscore", title = "Nvda Volscore, Implived Volatility, and Sector Volatility with Entry/Exit Points") +
+  scale_color_manual(values = c("VolScore" = "#9941AC", "Realized Volatility" = "#FF5733", "Sector Volatility" = "#1C84C6", "IV" = "black")) +  # Custom colors
+  theme_minimal()
+
+positions_df
+```
+
+# Conclusion
+
+This report demonstrates how to calculate a VolScore and develop a simple short-volatility trading strategy based on implied and realized volatilities. The strategy involves entering positions when the VolScore is high and exiting when the VolScore drops or after a set holding period. The backtest results show the P&L for each trade and the overall performance of the strategy.
