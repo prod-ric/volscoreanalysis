@@ -5,10 +5,6 @@ In recent times, retail options trading has surged, and according to a ([Barclay
 
 In this article, we explore how to use VolScore for trading NVIDIA (NVDA) options by comparing its implied volatility to that of its sector, composed of stocks like Microsoft (MSFT), Apple (AAPL), and AMD. Let’s dive into the strategy and its backtest results.
 
-We will: 1. Gather implied volatilities and realized volatilities for the selected stocks. 2. Calculate the sector’s realized volatility. 3. Compare NVDA’s implied volatility to the sector’s realized volatility to generate a VolScore. 4. Develop a trading strategy based on VolScore thresholds. 5. Backtest the strategy and plot the results.
-
-
-In this analysis, we explore a volatility-based trading strategy on NVIDIA (NVDA) options using a metric called **VolScore**. The VolScore measures how much higher (or lower) a stock's implied volatility is compared to the realized volatility of its sector. The sector consists of stocks like Microsoft (MSFT), Apple (AAPL), and AMD.
 
 We will:
 1. Gather implied volatilities and realized volatilities for the selected stocks.
